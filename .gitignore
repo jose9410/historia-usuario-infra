@@ -1,0 +1,7 @@
+# Variables de entorno (contienen secretos, NO subir)
+.env
+.env.local
+.env.production
+
+# Docker
+docker-compose.override.yml

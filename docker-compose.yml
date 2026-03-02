@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: ./backend/Koncilia.HistoriaUsuario.Api
+    container_name: koncilia-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - AzureOpenAI__DeploymentName=${AZURE_DEPLOYMENT_NAME}
+      - AzureOpenAI__Endpoint=${AZURE_ENDPOINT}
+      - AzureOpenAI__ApiKey=${AZURE_API_KEY}
+      - Anthropic__ApiKey=${ANTHROPIC_API_KEY}
+      - Anthropic__ModelId=${ANTHROPIC_MODEL_ID}
+      - TranscriptionSettings__InputDirectory=${INPUT_DIRECTORY:-Inputs}
+      - TranscriptionSettings__OutputDirectory=${OUTPUT_DIRECTORY:-Outputs}
+    volumes:
+      - backend-outputs:/app/Outputs
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend/koncilia-web
+    container_name: koncilia-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend-outputs:
