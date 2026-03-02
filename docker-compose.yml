@@ -1,7 +1,7 @@
 services:
   backend:
-    build: ./backend/Koncilia.HistoriaUsuario.Api
-    container_name: koncilia-backend
+    image: madu1206/historia-usuario-api:latest
+    container_name: historia-usuario-api
     ports:
       - "8080:8080"
     environment:
@@ -17,8 +17,8 @@ services:
     restart: unless-stopped
 
   frontend:
-    build: ./frontend/koncilia-web
-    container_name: koncilia-frontend
+    image: madu1206/historia-usuario-web:latest
+    container_name: historia-usuario-web
     ports:
       - "80:80"
     depends_on:
