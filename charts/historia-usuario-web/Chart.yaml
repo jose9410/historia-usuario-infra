@@ -1,0 +1,6 @@
+apiVersion: v2
+name: historia-usuario-web
+description: Helm Chart para el Frontend Angular 19 de Historia de Usuario (Nginx)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

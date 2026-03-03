@@ -1,0 +1,6 @@
+apiVersion: v2
+name: historia-usuario-api
+description: Helm Chart para el microservicio Backend de Historia de Usuario (.NET 9 + Azure OpenAI)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

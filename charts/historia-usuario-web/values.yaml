@@ -1,0 +1,32 @@
+# Valores por defecto del Chart - historia-usuario-web
+
+replicaCount: 1
+
+image:
+  repository: madu1206/historia-usuario-web
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Nombre del servicio del backend dentro del cluster
+# Debe coincidir con el nombre del Service del chart historia-usuario-api
+backendService:
+  name: "historia-usuario-api-release-api-svc"
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "historia-usuario.example.com"   # Cambia por tu dominio real
+  tls: false
+
+resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "256Mi"
+    cpu: "200m"

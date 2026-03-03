@@ -1,0 +1,45 @@
+# Valores por defecto del Chart - historia-usuario-api
+# Sobrescribe estos valores con: helm install ... --set key=value
+# o con un archivo: helm install ... -f my-values.yaml
+
+replicaCount: 1
+
+image:
+  repository: madu1206/historia-usuario-api
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# Secretos de Azure OpenAI - REEMPLAZA con valores reales
+azureOpenAI:
+  deploymentName: ""
+  endpoint: ""
+  apiKey: ""
+
+# Secretos de Anthropic (opcional)
+anthropic:
+  apiKey: ""
+  modelId: "claude-3-5-sonnet-20240620"
+
+# Directorios de trabajo del agente
+transcriptionSettings:
+  inputDirectory: "Inputs"
+  outputDirectory: "Outputs"
+
+# Recursos de Kubernetes
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
+
+# Persistencia para los archivos de salida
+persistence:
+  enabled: true
+  size: "1Gi"
+  storageClass: ""

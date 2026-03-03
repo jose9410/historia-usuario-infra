@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-api
+  labels:
+    app: historia-usuario-api
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: historia-usuario-api
+  template:
+    metadata:
+      labels:
+        app: historia-usuario-api
+    spec:
+      containers:
+        - name: historia-usuario-api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: {{ .Release.Name }}-secrets
+          env:
+            - name: TranscriptionSettings__InputDirectory
+              value: {{ .Values.transcriptionSettings.inputDirectory | quote }}
+            - name: TranscriptionSettings__OutputDirectory
+              value: {{ .Values.transcriptionSettings.outputDirectory | quote }}
+          volumeMounts:
+            - name: outputs-storage
+              mountPath: /app/Outputs
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: outputs-storage
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ .Release.Name }}-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
