@@ -14,7 +14,7 @@ service:
 # Nombre del servicio del backend dentro del cluster
 # Debe coincidir con el nombre del Service del chart historia-usuario-api
 backendService:
-  name: "historia-usuario-api-release-api-svc"
+  name: "historia-api-api-svc"
   port: 8080
 
 ingress:
