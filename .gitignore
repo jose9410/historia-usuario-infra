@@ -5,3 +5,6 @@
 
 # Docker
 docker-compose.override.yml
+
+# Guia de Kubernetes
+guia_kubernetes_gitops.md
