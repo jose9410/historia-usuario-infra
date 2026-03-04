@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: historia-api
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/jose9410/koncilia-infra.git'
+    path: charts/historia-usuario-api
+    targetRevision: HEAD
+    helm:
+      parameters:
+        - name: persistence.enabled
+          value: 'false'
+        # NOTA: No ponemos la API Key aquí por seguridad visual en GitHub.
+        # ArgoCD permite colocar los secretos desde la interfaz o con módulos como SealedSecrets.
+        # Solo inyectamos este para que el Pod siempre arranque correctamente configurado.
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: requerimiento
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: historia-web
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: 'https://github.com/jose9410/koncilia-infra.git'
+    path: charts/historia-usuario-web
+    targetRevision: HEAD
+    helm:
+      parameters:
+        - name: ingress.host
+          value: ''
+      # Aquí indicamos que ignore el host para que apunte con cualquer IP pública de la VM.
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: requerimiento
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
