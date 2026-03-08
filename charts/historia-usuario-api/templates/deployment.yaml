@@ -33,7 +33,7 @@ spec:
             periodSeconds: 5
           envFrom:
             - secretRef:
-                name: {{ .Release.Name }}-secrets
+                name: historia-api-manual-secrets
           env:
             - name: TranscriptionSettings__InputDirectory
               value: {{ .Values.transcriptionSettings.inputDirectory | quote }}
