@@ -5,7 +5,7 @@ replicaCount: 1
 image:
   repository: madu1206/historia-usuario-web
   pullPolicy: Always
-  tag: "v1.0.0"
+  tag: "v1.1.0"
 
 service:
   type: ClusterIP
