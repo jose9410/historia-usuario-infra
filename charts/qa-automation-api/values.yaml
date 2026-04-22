@@ -4,7 +4,7 @@ replicaCount: 1
 image:
   repository: madu1206/qaautomation-api
   pullPolicy: Always
-  tag: "latest"
+  tag: "v2.1.0"
 
 service:
   type: ClusterIP
