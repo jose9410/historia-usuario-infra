@@ -8,3 +8,12 @@ docker-compose.override.yml
 
 # Guia de Kubernetes
 guia_kubernetes_gitops.md
+
+
+# Ignore frontend submodule
+frontend/
+
+# Ignore backend microservice
+backend/
+
+

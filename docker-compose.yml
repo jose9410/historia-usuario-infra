@@ -1,7 +1,8 @@
 services:
+  # Story Synthesis API
   backend:
     image: madu1206/historia-usuario-api:latest
-    container_name: historia-usuario-api
+    container_name: story-synthesis-api
     ports:
       - "8080:8080"
     environment:
@@ -16,13 +17,23 @@ services:
       - backend-outputs:/app/Outputs
     restart: unless-stopped
 
+  # Compliance Automator API
+  automation-api:
+    image: madu1206/qaautomation-api:latest
+    container_name: compliance-automator-api
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+
+  # AutoAnalyst Web (Frontend)
   frontend:
     image: madu1206/historia-usuario-web:latest
-    container_name: historia-usuario-web
+    container_name: autoanalyst-web
     ports:
       - "80:80"
     depends_on:
       - backend
+      - automation-api
     restart: unless-stopped
 
 volumes:

@@ -1,0 +1,20 @@
+# Valores por defecto del Chart - qa-automation-api
+replicaCount: 1
+
+image:
+  repository: madu1206/qaautomation-api
+  pullPolicy: Always
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# Recursos de Kubernetes
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "1000m" # Playwright puede consumir bastante CPU al arrancar el navegador
