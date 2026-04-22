@@ -17,17 +17,21 @@ services:
       - backend-outputs:/app/Outputs
     restart: unless-stopped
 
-  # Compliance Automator API
+  # Compliance Automator API (Building locally)
   automation-api:
-    image: madu1206/qaautomation-api:latest
+    build:
+      context: ./backend/QAAutomation.Api
+      dockerfile: Dockerfile
     container_name: compliance-automator-api
     ports:
       - "8081:8080"
     restart: unless-stopped
 
-  # AutoAnalyst Web (Frontend)
+  # AutoAnalyst Web (Building locally)
   frontend:
-    image: madu1206/historia-usuario-web:latest
+    build:
+      context: ./frontend/koncilia-web
+      dockerfile: Dockerfile
     container_name: autoanalyst-web
     ports:
       - "80:80"
