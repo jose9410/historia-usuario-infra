@@ -9,6 +9,7 @@ spec:
   selector:
     app: historia-usuario-api
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: {{ .Values.service.port }}
       targetPort: 8080
