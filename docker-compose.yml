@@ -1,7 +1,11 @@
 services:
-  # Story Synthesis API
+  # ─────────────────────────────────────────────────────────────────────────
+  # Story Synthesis API  (service-a)
+  # ─────────────────────────────────────────────────────────────────────────
   backend:
-    image: madu1206/historia-usuario-api:latest
+    build:
+      context: ./backend/HistoriaUsuario.Api
+      dockerfile: Dockerfile
     container_name: story-synthesis-api
     ports:
       - "8080:8080"
@@ -13,11 +17,20 @@ services:
       - Anthropic__ModelId=${ANTHROPIC_MODEL_ID}
       - TranscriptionSettings__InputDirectory=${INPUT_DIRECTORY:-Inputs}
       - TranscriptionSettings__OutputDirectory=${OUTPUT_DIRECTORY:-Outputs}
+      # OTel config — overrides appsettings.json
+      - OpenTelemetry__OtlpEndpoint=http://otel-collector:4317
+      - Services__QAAutomationApi=http://automation-api:8080
+      - DEPLOY_ENV=local
     volumes:
       - backend-outputs:/app/Outputs
+    depends_on:
+      - automation-api
+      - otel-collector
     restart: unless-stopped
 
-  # Compliance Automator API (Building locally)
+  # ─────────────────────────────────────────────────────────────────────────
+  # Compliance Automator API  (service-b)
+  # ─────────────────────────────────────────────────────────────────────────
   automation-api:
     build:
       context: ./backend/QAAutomation.Api
@@ -25,9 +38,16 @@ services:
     container_name: compliance-automator-api
     ports:
       - "8081:8080"
+    environment:
+      - OpenTelemetry__OtlpEndpoint=http://otel-collector:4317
+      - DEPLOY_ENV=local
+    depends_on:
+      - otel-collector
     restart: unless-stopped
 
-  # AutoAnalyst Web (Building locally)
+  # ─────────────────────────────────────────────────────────────────────────
+  # AutoAnalyst Web
+  # ─────────────────────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend/koncilia-web
@@ -40,5 +60,104 @@ services:
       - automation-api
     restart: unless-stopped
 
+  # ═════════════════════════════════════════════════════════════════════════
+  # OBSERVABILITY STACK
+  # ═════════════════════════════════════════════════════════════════════════
+
+  # ── OpenTelemetry Collector ──────────────────────────────────────────────
+  # Receives OTLP from both services, fans out to Jaeger, Loki, Prometheus.
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.106.1
+    container_name: otel-collector
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./backend/otel-collector-config.local.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC (services push here)
+      - "4318:4318"   # OTLP HTTP (fallback)
+      - "8889:8889"   # Prometheus metrics scrape endpoint
+      - "13133:13133" # Health check
+      - "55679:55679" # zPages debug UI
+    environment:
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - DEPLOY_ENV=local
+    depends_on:
+      - jaeger
+      - loki
+    restart: unless-stopped
+
+  # ── Jaeger (distributed trace UI) ────────────────────────────────────────
+  # UI: http://localhost:16686
+  # Receives traces from the OTel Collector via OTLP gRPC.
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    container_name: jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "14317:4317"   # OTLP gRPC receiver (collector → Jaeger)
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    restart: unless-stopped
+
+  # ── Prometheus (metrics scraper + storage) ────────────────────────────────
+  # Scrapes /metrics from the OTel Collector's Prometheus exporter.
+  # Grafana reads from this instance.
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"    # Prometheus UI
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+
+  # ── Loki (log aggregation) ────────────────────────────────────────────────
+  # Receives structured logs from the OTel Collector.
+  # Grafana reads from this; trace_id field enables log ↔ trace correlation.
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"    # Loki HTTP API
+    volumes:
+      - loki-data:/loki
+    restart: unless-stopped
+
+  # ── Grafana (dashboards + Explorer) ──────────────────────────────────────
+  # Pre-provisioned with Prometheus, Loki, and Jaeger data sources.
+  # Dashboard JSON auto-loaded from ./observability/grafana/dashboards/
+  # UI: http://localhost:3000  admin/admin
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+    restart: unless-stopped
+
 volumes:
   backend-outputs:
+  prometheus-data:
+  loki-data:
+  grafana-data:
