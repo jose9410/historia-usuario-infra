@@ -16,4 +16,9 @@ frontend/
 # Ignore backend microservice
 backend/
 
-
+# Terraform — secrets and local state (NEVER commit these)
+terraform/terraform.tfvars
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
