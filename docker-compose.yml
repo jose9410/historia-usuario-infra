@@ -69,7 +69,7 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.106.1
     container_name: otel-collector
-    command: ["--config=/etc/otel/config.yaml"]
+    command: [ "--config=/etc/otel/config.yaml" ]
     volumes:
       - ./backend/otel-collector-config.local.yaml:/etc/otel/config.yaml:ro
     ports:
@@ -77,7 +77,6 @@ services:
       - "4318:4318"   # OTLP HTTP (fallback)
       - "8889:8889"   # Prometheus metrics scrape endpoint
       - "13133:13133" # Health check
-      - "55679:55679" # zPages debug UI
     environment:
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - DEPLOY_ENV=local
@@ -93,8 +92,8 @@ services:
     image: jaegertracing/all-in-one:1.60
     container_name: jaeger
     ports:
-      - "16686:16686"  # Jaeger UI
-      - "14317:4317"   # OTLP gRPC receiver (collector → Jaeger)
+      - "16686:16686" # Jaeger UI
+      - "14317:4317" # OTLP gRPC receiver (collector → Jaeger)
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     restart: unless-stopped
@@ -114,7 +113,7 @@ services:
       - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     ports:
-      - "9090:9090"    # Prometheus UI
+      - "9090:9090" # Prometheus UI
     depends_on:
       - otel-collector
     restart: unless-stopped
@@ -127,7 +126,7 @@ services:
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
     ports:
-      - "3100:3100"    # Loki HTTP API
+      - "3100:3100" # Loki HTTP API
     volumes:
       - loki-data:/loki
     restart: unless-stopped
