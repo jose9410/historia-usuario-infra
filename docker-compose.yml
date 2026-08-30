@@ -46,6 +46,53 @@ services:
     restart: unless-stopped
 
   # ─────────────────────────────────────────────────────────────────────────
+  # Data Service  (service-c) — Persistencia PostgreSQL
+  # ─────────────────────────────────────────────────────────────────────────
+  data-service:
+    build:
+      context: ./backend/DataService
+      dockerfile: Dockerfile
+    container_name: koncilia-data-service
+    ports:
+      - "8082:8080"
+    environment:
+      # Connection string apuntando al servicio 'postgres' del compose
+      - ConnectionStrings__PostgreSQL=Host=postgres;Port=5432;Database=${POSTGRES_DB:-koncilia_data};Username=${POSTGRES_USER:-koncilia};Password=${POSTGRES_PASSWORD}
+      - OpenTelemetry__OtlpEndpoint=http://otel-collector:4317
+      - ASPNETCORE_ENVIRONMENT=Development
+      - DEPLOY_ENV=local
+    depends_on:
+      postgres:
+        condition: service_healthy   # Esperar a que Postgres esté listo antes de arrancar
+      otel-collector:
+        condition: service_started
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 16 — Base de datos local para data-service
+  # UI opcional: docker exec -it koncilia-postgres psql -U koncilia -d koncilia_data
+  # ─────────────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: koncilia-postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-koncilia_data}
+      - POSTGRES_USER=${POSTGRES_USER:-koncilia}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"   # Expuesto en localhost para conectar con herramientas como DBeaver
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # pg_isready verifica que el servidor PostgreSQL acepta conexiones
+      test: ["CMD-SHELL", "pg_isready -U koncilia -d koncilia_data"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  # ─────────────────────────────────────────────────────────────────────────
   # AutoAnalyst Web
   # ─────────────────────────────────────────────────────────────────────────
   frontend:
@@ -163,3 +210,4 @@ volumes:
   prometheus-data:
   loki-data:
   grafana-data:
+  postgres-data:   # Persistencia local de PostgreSQL para data-service

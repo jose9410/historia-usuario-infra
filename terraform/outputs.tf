@@ -18,6 +18,22 @@ output "qa_automation_api_service_name" {
   value       = aws_ecs_service.qa_automation_api.name
 }
 
+output "data_service_service_name" {
+  description = "The name of the Data Service ECS service"
+  value       = aws_ecs_service.data_service.name
+}
+
+output "rds_endpoint" {
+  description = "Endpoint de la instancia RDS PostgreSQL (host:port)"
+  value       = "${aws_db_instance.koncilia_data.address}:${aws_db_instance.koncilia_data.port}"
+}
+
+output "db_secret_arn" {
+  description = "ARN del secreto en Secrets Manager que contiene el ConnectionString del data-service"
+  value       = aws_secretsmanager_secret.db_connection_string.arn
+  sensitive   = false  # El ARN no es sensible; el valor del secreto sí lo es
+}
+
 output "next_steps" {
   description = "Instructions for getting the public IP addresses"
   value       = <<EOT

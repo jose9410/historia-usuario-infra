@@ -28,3 +28,24 @@ variable "azure_openai_api_key" {
   sensitive   = true  # Terraform will redact this from logs
   default     = ""
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# RDS PostgreSQL — data-service
+# ─────────────────────────────────────────────────────────────────────────────
+variable "db_username" {
+  description = "Usuario maestro de la base de datos RDS PostgreSQL"
+  type        = string
+  default     = "koncilia"
+}
+
+variable "db_password" {
+  description = "Contraseña del usuario maestro de RDS — NUNCA hardcodear. Usar terraform.tfvars o CI/CD secrets."
+  type        = string
+  sensitive   = true  # Terraform redacta este valor en todos los logs y plan output
+}
+
+variable "db_instance_class" {
+  description = "Tipo de instancia RDS. Usar db.t3.micro para dev/test, db.t3.small o superior para producción."
+  type        = string
+  default     = "db.t3.micro"
+}
