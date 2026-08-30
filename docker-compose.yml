@@ -20,13 +20,18 @@ services:
       # OTel config — overrides appsettings.json
       - OpenTelemetry__OtlpEndpoint=http://otel-collector:4317
       - Services__QAAutomationApi=http://automation-api:8080
+      # data-service URL: usa el nombre del contenedor (red interna Docker)
+      # En AWS ECS se sobreescribe con http://data-service.local (Cloud Map)
+      - DATA_SERVICE_URL=http://data-service:8080
       - DEPLOY_ENV=local
     volumes:
       - backend-outputs:/app/Outputs
     depends_on:
       - automation-api
+      - data-service       # data-service debe arrancar antes que el backend
       - otel-collector
     restart: unless-stopped
+
 
   # ─────────────────────────────────────────────────────────────────────────
   # Compliance Automator API  (service-b)
