@@ -2,6 +2,14 @@ resource "aws_ecs_cluster" "main" {
   name = "koncilia-cluster"
 }
 
+# -----------------------------------------------------------------------------
+# Service Connect Namespace (Cloud Map)
+# -----------------------------------------------------------------------------
+resource "aws_service_discovery_http_namespace" "local" {
+  name        = "local"
+  description = "Service discovery namespace for ECS Service Connect"
+}
+
 # CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "historia_api_logs" {
   name              = "/ecs/historia-api"
@@ -49,10 +57,11 @@ resource "aws_ecs_task_definition" "historia_api" {
       environment = [
         { name = "OpenTelemetry__OtlpEndpoint", value = "http://localhost:4317" },
         { name = "DEPLOY_ENV", value = "aws" },
-        { name = "Services__QAAutomationApi", value = var.qa_api_url },
+        { name = "Services__QAAutomationApi", value = "http://qa-automation-api.local:8080" },
+        { name = "DATA_SERVICE_URL", value = "http://data-service.local:8080" },
         { name = "AzureOpenAI__DeploymentName", value = var.azure_openai_deployment_name },
-        { name = "AzureOpenAI__Endpoint",        value = var.azure_openai_endpoint },
-        { name = "AzureOpenAI__ApiKey",           value = var.azure_openai_api_key }
+        { name = "AzureOpenAI__Endpoint", value = var.azure_openai_endpoint },
+        { name = "AzureOpenAI__ApiKey", value = var.azure_openai_api_key }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -98,8 +107,10 @@ resource "aws_ecs_task_definition" "qa_automation_api" {
       essential = true
       portMappings = [
         {
+          name          = "qa-api-port"
           containerPort = 8080
           hostPort      = 8080
+          protocol      = "tcp"
         }
       ]
       environment = [
@@ -150,6 +161,7 @@ resource "aws_ecs_task_definition" "data_service" {
       essential = true
       portMappings = [
         {
+          name          = "data-service-port"
           containerPort = 8080
           hostPort      = 8080
           protocol      = "tcp"
@@ -158,8 +170,8 @@ resource "aws_ecs_task_definition" "data_service" {
       environment = [
         # El sidecar aws-otel-collector escucha en localhost:4317 dentro de la tarea
         { name = "OpenTelemetry__OtlpEndpoint", value = "http://localhost:4317" },
-        { name = "DEPLOY_ENV",                  value = "aws" },
-        { name = "ASPNETCORE_ENVIRONMENT",       value = "production" }
+        { name = "DEPLOY_ENV", value = "aws" },
+        { name = "ASPNETCORE_ENVIRONMENT", value = "production" }
       ]
       # ConnectionString inyectado desde Secrets Manager (NO como variable de entorno en texto plano)
       # ECS mapea el valor del secreto a la variable de entorno indicada en 'name'
@@ -183,7 +195,7 @@ resource "aws_ecs_task_definition" "data_service" {
         interval    = 30
         timeout     = 5
         retries     = 3
-        startPeriod = 60  # Dar tiempo a las migraciones de BD al arranque inicial
+        startPeriod = 60 # Dar tiempo a las migraciones de BD al arranque inicial
       }
     },
     {
@@ -235,6 +247,12 @@ resource "aws_ecs_service" "historia_api" {
     security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
   }
+
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.local.arn
+    # historia-api actúa solo como cliente, por lo que no necesita un bloque 'service'
+  }
 }
 
 resource "aws_ecs_service" "qa_automation_api" {
@@ -249,6 +267,20 @@ resource "aws_ecs_service" "qa_automation_api" {
     security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
   }
+
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.local.arn
+
+    service {
+      port_name      = "qa-api-port"
+      discovery_name = "qa-automation-api"
+      client_alias {
+        port     = 8080
+        dns_name = "qa-automation-api.local"
+      }
+    }
+  }
 }
 
 resource "aws_ecs_service" "data_service" {
@@ -262,6 +294,20 @@ resource "aws_ecs_service" "data_service" {
     subnets          = [aws_subnet.public_1.id, aws_subnet.public_2.id]
     security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
+  }
+
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.local.arn
+
+    service {
+      port_name      = "data-service-port"
+      discovery_name = "data-service"
+      client_alias {
+        port     = 8080
+        dns_name = "data-service.local"
+      }
+    }
   }
 
   # Dependencia explícita: data-service requiere que la BD esté disponible
