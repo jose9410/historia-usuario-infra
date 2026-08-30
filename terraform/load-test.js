@@ -7,7 +7,8 @@ export const options = {
 };
 
 export default function () {
-    const url = 'http://100.54.39.43:8080/api/historiausuario/generate';
+    //const url = 'http://100.54.39.43:8080/api/historiausuario/generate';
+    const url = 'http://host.docker.internal:8080/api/historiausuario/generate';
 
     const params = {
         headers: {

@@ -25,7 +25,7 @@ variable "azure_openai_endpoint" {
 variable "azure_openai_api_key" {
   description = "Azure OpenAI API key — NEVER hardcode this value"
   type        = string
-  sensitive   = true  # Terraform will redact this from logs
+  sensitive   = true # Terraform will redact this from logs
   default     = ""
 }
 
@@ -41,7 +41,7 @@ variable "db_username" {
 variable "db_password" {
   description = "Contraseña del usuario maestro de RDS — NUNCA hardcodear. Usar terraform.tfvars o CI/CD secrets."
   type        = string
-  sensitive   = true  # Terraform redacta este valor en todos los logs y plan output
+  sensitive   = true # Terraform redacta este valor en todos los logs y plan output
 }
 
 variable "db_instance_class" {

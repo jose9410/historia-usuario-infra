@@ -31,7 +31,7 @@ output "rds_endpoint" {
 output "db_secret_arn" {
   description = "ARN del secreto en Secrets Manager que contiene el ConnectionString del data-service"
   value       = aws_secretsmanager_secret.db_connection_string.arn
-  sensitive   = false  # El ARN no es sensible; el valor del secreto sí lo es
+  sensitive   = false # El ARN no es sensible; el valor del secreto sí lo es
 }
 
 output "next_steps" {

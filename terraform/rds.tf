@@ -68,40 +68,40 @@ resource "aws_db_subnet_group" "main" {
 # ── RDS Instance — PostgreSQL 16 ───────────────────────────────────────────────
 resource "aws_db_instance" "koncilia_data" {
   # ── Identificador y motor ──────────────────────────────────────────────────
-  identifier        = "koncilia-data-db"
-  engine            = "postgres"
-  engine_version    = "16.3"
-  instance_class    = var.db_instance_class  # "db.t3.micro" para dev, "db.t3.small" para prod
+  identifier     = "koncilia-data-db"
+  engine         = "postgres"
+  engine_version = "16.3"
+  instance_class = var.db_instance_class # "db.t3.micro" para dev, "db.t3.small" para prod
 
   # ── Almacenamiento ─────────────────────────────────────────────────────────
-  allocated_storage     = 20          # GB mínimo para gp2
-  max_allocated_storage = 100         # Auto-scaling hasta 100 GB
+  allocated_storage     = 20  # GB mínimo para gp2
+  max_allocated_storage = 100 # Auto-scaling hasta 100 GB
   storage_type          = "gp2"
-  storage_encrypted     = true        # Cifrado en reposo con AWS KMS
+  storage_encrypted     = true # Cifrado en reposo con AWS KMS
 
   # ── Base de datos inicial ──────────────────────────────────────────────────
   db_name  = "koncilia_data"
   username = var.db_username
-  password = var.db_password          # Variable sensitive — no aparece en logs
+  password = var.db_password # Variable sensitive — no aparece en logs
 
   # ── Red ────────────────────────────────────────────────────────────────────
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
-  publicly_accessible    = false      # Solo accesible desde dentro de la VPC
+  publicly_accessible    = false # Solo accesible desde dentro de la VPC
 
   # ── Disponibilidad ─────────────────────────────────────────────────────────
-  multi_az            = false         # Cambiar a true para producción real
-  availability_zone   = "${var.aws_region}a"
+  multi_az          = false # Cambiar a true para producción real
+  availability_zone = "${var.aws_region}a"
 
   # ── Mantenimiento y backups ────────────────────────────────────────────────
-  backup_retention_period   = 7       # 7 días de backups automáticos
-  backup_window             = "03:00-04:00"  # UTC — ventana de bajo tráfico
-  maintenance_window        = "sun:04:00-sun:05:00"
+  backup_retention_period    = 0             # 0 para evitar errores de capa gratuita (Free Tier)
+  # backup_window              = "03:00-04:00" # Deshabilitado porque no hay backups automáticos
+  maintenance_window         = "sun:04:00-sun:05:00"
   auto_minor_version_upgrade = true
 
   # ── Seguridad ──────────────────────────────────────────────────────────────
-  deletion_protection = false         # Cambiar a true en producción
-  skip_final_snapshot = true          # Cambiar a false en producción
+  deletion_protection = false # Cambiar a true en producción
+  skip_final_snapshot = true  # Cambiar a false en producción
   # final_snapshot_identifier = "koncilia-data-final-snapshot"  # descomentar en prod
 
   # ── Parámetros de PostgreSQL ───────────────────────────────────────────────
@@ -123,7 +123,7 @@ resource "aws_db_instance" "koncilia_data" {
 resource "aws_secretsmanager_secret" "db_connection_string" {
   name                    = "koncilia/data-service/db-connection-string"
   description             = "ConnectionString de PostgreSQL para data-service (formato Npgsql)"
-  recovery_window_in_days = 7     # 7 días antes de eliminación permanente
+  recovery_window_in_days = 7 # 7 días antes de eliminación permanente
 
   tags = {
     Service   = "data-service"
