@@ -94,10 +94,11 @@ resource "aws_db_instance" "koncilia_data" {
   availability_zone = "${var.aws_region}a"
 
   # ── Mantenimiento y backups ────────────────────────────────────────────────
-  backup_retention_period    = 0             # 0 para evitar errores de capa gratuita (Free Tier)
-  # backup_window              = "03:00-04:00" # Deshabilitado porque no hay backups automáticos
-  maintenance_window         = "sun:04:00-sun:05:00"
-  auto_minor_version_upgrade = true
+  backup_retention_period         = 0 # 0 para evitar errores de capa gratuita (Free Tier)
+  # backup_window                 = "03:00-04:00" # Deshabilitado porque no hay backups automáticos
+  maintenance_window              = "sun:04:00-sun:05:00"
+  auto_minor_version_upgrade      = true
+  enabled_cloudwatch_logs_exports = ["postgresql"]
 
   # ── Seguridad ──────────────────────────────────────────────────────────────
   deletion_protection = false # Cambiar a true en producción
@@ -123,7 +124,7 @@ resource "aws_db_instance" "koncilia_data" {
 resource "aws_secretsmanager_secret" "db_connection_string" {
   name                    = "koncilia/data-service/db-connection-string"
   description             = "ConnectionString de PostgreSQL para data-service (formato Npgsql)"
-  recovery_window_in_days = 7 # 7 días antes de eliminación permanente
+  recovery_window_in_days = 0 # 0 para permitir recreación inmediata en caso de destroy y re-apply
 
   tags = {
     Service   = "data-service"

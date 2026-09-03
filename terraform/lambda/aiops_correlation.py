@@ -32,7 +32,7 @@ def get_alarm_state(alarm_name):
 def find_trace_id_in_logs():
     """Busca el último error en CloudWatch Logs y extrae el Trace ID de OpenTelemetry."""
     end_time = int(datetime.utcnow().timestamp() * 1000)
-    start_time = int((datetime.utcnow() - timedelta(minutes=10)).timestamp() * 1000)
+    start_time = int((datetime.utcnow() - timedelta(minutes=60)).timestamp() * 1000)
     
     query = "fields @timestamp, @message | filter @message like /(?i)error|exception|fail/ | sort @timestamp desc | limit 5"
     

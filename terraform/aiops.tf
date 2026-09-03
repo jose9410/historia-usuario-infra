@@ -101,6 +101,18 @@ resource "aws_lambda_function" "aiops_correlation_engine" {
   }
 }
 
+# Log Group explícito para la Lambda con retención controlada (7 días)
+resource "aws_cloudwatch_log_group" "aiops_lambda_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.aiops_correlation_engine.function_name}"
+  retention_in_days = 7
+
+  tags = {
+    Environment = "production"
+    Service     = "aiops"
+    ManagedBy   = "terraform"
+  }
+}
+
 # Permiso para que SNS invoque a la Lambda
 resource "aws_lambda_permission" "sns_invoke_lambda" {
   statement_id  = "AllowExecutionFromSNS"
