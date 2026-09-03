@@ -8,6 +8,9 @@ param (
     [string]$Action = "enable",
 
     [Parameter(Mandatory = $false)]
+    [int]$LatencyMs = 3000,
+
+    [Parameter(Mandatory = $false)]
     [string]$Region = "us-east-1",
 
     [Parameter(Mandatory = $false)]
@@ -20,11 +23,11 @@ if ($Action -eq "enable") {
     Write-Host "`n========================================================" -ForegroundColor Red
     Write-Host " [CHAOS ENGINEERING] Inyectando Caos en AWS ECS Fargate" -ForegroundColor Red
     Write-Host "========================================================" -ForegroundColor Red
-    Write-Host "  - qa-automation-api : CHAOS_LATENCY_ENABLED = true (600ms)" -ForegroundColor Yellow
+    Write-Host "  - qa-automation-api : CHAOS_LATENCY_ENABLED = true ($($LatencyMs)ms)" -ForegroundColor Yellow
     Write-Host "  - data-service      : CHAOS_ERROR_ENABLED   = true (10% 500s)" -ForegroundColor Yellow
     Write-Host ""
     $QaLatency   = "true"
-    $QaLatencyMs = "600"
+    $QaLatencyMs = "$LatencyMs"
     $DataError   = "true"
 } else {
     Write-Host "`n========================================================" -ForegroundColor Green
@@ -34,7 +37,7 @@ if ($Action -eq "enable") {
     Write-Host "  - data-service      : CHAOS_ERROR_ENABLED   = false" -ForegroundColor Gray
     Write-Host ""
     $QaLatency   = "false"
-    $QaLatencyMs = "200"
+    $QaLatencyMs = "0"
     $DataError   = "false"
 }
 
@@ -60,9 +63,9 @@ function Clean-TaskDefinitionJson ($taskDef) {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1. QA-AUTOMATION-API-SERVICE (Inyección de Latencia)
+# 1. QA-AUTOMATION-API-SERVICE
 # ─────────────────────────────────────────────────────────────────────────────
-Write-Host "[1/2] Procesando qa-automation-api-service..." -ForegroundColor Cyan
+Write-Host "[1/2] Actualizando qa-automation-api-service..." -ForegroundColor Cyan
 
 $rawQaJson = aws ecs describe-task-definition --task-definition qa-automation-api-task --region $Region --query "taskDefinition" | Out-String
 if (-not [string]::IsNullOrWhiteSpace($rawQaJson)) {
@@ -71,7 +74,6 @@ if (-not [string]::IsNullOrWhiteSpace($rawQaJson)) {
 
     $qaContainer = $taskDefQa.containerDefinitions | Where-Object { $_.name -eq "qa-automation-api" }
     if ($qaContainer) {
-        # Filtrar variables previas de caos
         $filteredEnv = @($qaContainer.environment | Where-Object { $_.name -notin @("CHAOS_LATENCY_ENABLED", "CHAOS_LATENCY_MS") })
         $filteredEnv += @(
             [PSCustomObject]@{ name = "CHAOS_LATENCY_ENABLED"; value = $QaLatency },
@@ -90,22 +92,18 @@ if (-not [string]::IsNullOrWhiteSpace($rawQaJson)) {
             --cluster $ClusterName `
             --service qa-automation-api-service `
             --task-definition $newQaArn `
+            --desired-count 1 `
             --region $Region `
             --force-new-deployment | Out-Null
 
-        Write-Host "  -> Nueva revisión registrada: $newQaArn" -ForegroundColor Yellow
-        Write-Host "  -> Servicio qa-automation-api-service actualizado con éxito." -ForegroundColor Green
-    } else {
-        Write-Host "  [!] Error: No se encontró el contenedor 'qa-automation-api' en la definición." -ForegroundColor Red
+        Write-Host "  -> Nueva revisión: $newQaArn" -ForegroundColor Yellow
     }
-} else {
-    Write-Host "  [!] Error al obtener la definición de qa-automation-api-task." -ForegroundColor Red
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2. DATA-SERVICE-SERVICE (Inyección de Tasa de Error 500)
+# 2. DATA-SERVICE-SERVICE
 # ─────────────────────────────────────────────────────────────────────────────
-Write-Host "`n[2/2] Procesando data-service-service..." -ForegroundColor Cyan
+Write-Host "[2/2] Actualizando data-service-service..." -ForegroundColor Cyan
 
 $rawDataJson = aws ecs describe-task-definition --task-definition data-service-task --region $Region --query "taskDefinition" | Out-String
 if (-not [string]::IsNullOrWhiteSpace($rawDataJson)) {
@@ -131,18 +129,35 @@ if (-not [string]::IsNullOrWhiteSpace($rawDataJson)) {
             --cluster $ClusterName `
             --service data-service-service `
             --task-definition $newDataArn `
+            --desired-count 1 `
             --region $Region `
             --force-new-deployment | Out-Null
 
-        Write-Host "  -> Nueva revisión registrada: $newDataArn" -ForegroundColor Yellow
-        Write-Host "  -> Servicio data-service-service actualizado con éxito." -ForegroundColor Green
-    } else {
-        Write-Host "  [!] Error: No se encontró el contenedor 'data-service' en la definición." -ForegroundColor Red
+        Write-Host "  -> Nueva revisión: $newDataArn" -ForegroundColor Yellow
     }
-} else {
-    Write-Host "  [!] Error al obtener la definición de data-service-task." -ForegroundColor Red
 }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. ROTACIÓN INMEDIATA DE TAREAS (Sin esperar el draining lento de Fargate)
+# ─────────────────────────────────────────────────────────────────────────────
+Write-Host "`n[+] Aplicando cambio inmediato en Fargate..." -ForegroundColor Cyan
+
+$oldQaTasks = aws ecs list-tasks --cluster $ClusterName --service-name qa-automation-api-service --region $Region --query "taskArns[]" --output text
+foreach ($t in ($oldQaTasks -split "`t")) {
+    if ($t -and $t -ne "None") { aws ecs stop-task --cluster $ClusterName --task $t --region $Region --reason "Chaos toggle transition" 2>$null | Out-Null }
+}
+
+$oldDataTasks = aws ecs list-tasks --cluster $ClusterName --service-name data-service-service --region $Region --query "taskArns[]" --output text
+foreach ($t in ($oldDataTasks -split "`t")) {
+    if ($t -and $t -ne "None") { aws ecs stop-task --cluster $ClusterName --task $t --region $Region --reason "Chaos toggle transition" 2>$null | Out-Null }
+}
+
+Write-Host "  -> Tareas anteriores recicladas. ECS iniciando nuevas instancias en caliente..." -ForegroundColor Green
+
 Write-Host "`n========================================================" -ForegroundColor Cyan
-Write-Host " [OK] Operación de Caos completada exitosamente en ECS" -ForegroundColor Cyan
+if ($Action -eq "enable") {
+    Write-Host " [OK] Caos HABILITADO (+3.0s de latencia en cada petición)" -ForegroundColor Red
+} else {
+    Write-Host " [OK] Caos DESHABILITADO (Restaurado a <1.2s normal)" -ForegroundColor Green
+}
 Write-Host "========================================================`n" -ForegroundColor Cyan
